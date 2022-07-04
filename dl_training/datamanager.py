@@ -117,7 +117,8 @@ class OpenBHBDataManager:
               See https://pytorch.org/docs/stable/data.html#dataloader-collate-fn.
               """
         data = dict(outputs=None) # compliant with DataManager <collate_fn>
-        data["inputs"] = torch.stack([torch.from_numpy(sample[0]) for sample in list_samples], dim=0).float()
+        #data["inputs"] = torch.stack([torch.from_numpy(sample[0]) for sample in list_samples], dim=0).float()
+        data["inputs"] = torch.stack([torch.tensor(sample[0]) for sample in list_samples], dim=0).float()
         data["labels"] = torch.stack([torch.tensor(sample[1]) for sample in list_samples], dim=0).squeeze().float()
         return DataItem(**data)
 

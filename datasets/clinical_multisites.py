@@ -100,7 +100,6 @@ class ClinicalBase(ABC, Dataset):
         self.target = df[mask][self.target_name]
         assert self.target.isna().sum().sum() == 0, "Missing values for '%s' label"%self.target_name
         self.target = self.target.apply(self.target_transform_fn, axis=1, raw=True).values.ravel().astype(np.float32)
-
         all_keys = ["age", "sex", "diagnosis", "site"]
         self.all_labels = df[mask][all_keys].reset_index(drop=True)
         # Transforms (dx, site) according to _dx_site_mappings

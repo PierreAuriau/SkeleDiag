@@ -202,9 +202,10 @@ class MLTrainer(Thread):
         if X_test is not None:
             assert y_test is not None and test_names is not None, "<y_test> and <test_names> must be filled !"
             assert len(y_test) == len(X_test) == len(test_names)
-            for (X_test, y_test) in zip(X_test, y_test):
-                assert len(X_test) == len(y_test), "Incorrect dimension for X_test or y_test ({} != {})".\
-                    format(X_test.shape, np.array(y_test).shape)
+            #for (X_test, y_test) in zip(X_test, y_test):
+            for (X_t, y_t) in zip(X_test, y_test):
+                assert len(X_t) == len(y_t), "Incorrect dimension for X_test or y_test ({} != {})".\
+                    format(X_t.shape, np.array(y_t).shape)
         if X_val is not None:
             assert y_val is not None and len(y_val) == len(X_val)
 
