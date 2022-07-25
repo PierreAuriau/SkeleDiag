@@ -46,7 +46,7 @@ if __name__=="__main__":
 
     parser.add_argument("--residualize", type=str, choices=["linear", "combat"])
 
-    # Self-sypervised learning
+    # Self-supervised learning
     parser.add_argument("--sigma", type=float, help="Hyper-parameter for RBF kernel in self-supervised loss.", default=5)
 
     # Transfer Learning
