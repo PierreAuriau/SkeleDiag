@@ -71,6 +71,8 @@ class OpenBHBDataManager:
             if model == "SimCLR":
                 from dl_training.self_supervision.sim_clr import DA_Module
                 input_transforms.transforms.append(DA_Module())
+        elif preproc in ["skeleton"]:
+            input_transforms = Compose([Normalize()])
         else:
             raise ValueError("Unknown preproc: %s"%preproc)
         if N_train_max is not None:
@@ -269,7 +271,7 @@ class ClinicalDataManager(OpenBHBDataManager):
     def __init__(self, root: str, preproc: str, db: str, labels: List[str]=None, sampler: str="random",
                  batch_size: int=1, number_of_folds: int=None, N_train_max: int=None,
                  input_transforms: Callable[[np.ndarray], np.ndarray]=None, residualize: str=None,
-                 mask = None, device:str="cuda", **dataloader_kwargs):
+                 mask: np.ndarray=None, device:str="cuda", **dataloader_kwargs):
 
         assert db in ["scz", "bipolar", "asd"], "Unknown db: %s"%db
         assert sampler in ["random", "sequential"], "Unknown sampler '%s'"%sampler

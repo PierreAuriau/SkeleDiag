@@ -35,7 +35,7 @@ class OpenBHB(Dataset):
                  target_transforms: Callable[[int, float], Any]=None, load_data: bool=False):
         """
         :param root: str, path to the root directory containing the different .npy and .csv files
-        :param preproc: str, must be either VBM ('vbm'), Quasi-Raw ('quasi_raw') or FreeSurfer ('fs')
+        :param preproc: str, must be either VBM ('vbm'), Quasi-Raw ('quasi_raw'), FreeSurfer ('fs') or Skeleton ('skeleton')
         :param scheme: str, must be either 5-fold CV ('cv') or Train/Val/Test ('train_val_test')
         :param target: str or [str], either 'age', 'sex' or 'site'.
         :param split: str, either 'train', 'val', 'test' (inter) or 'test_intra' for 'train_val_test' scheme
@@ -50,7 +50,7 @@ class OpenBHB(Dataset):
         """
         if isinstance(target, str):
             target = [target]
-        assert preproc in ['vbm', 'quasi_raw'], "Unknown preproc: %s"%preproc
+        assert preproc in ['vbm', 'quasi_raw', 'skeleton'], "Unknown preproc: %s"%preproc
         assert scheme in ['cv', 'train_val_test'], "Unknown scheme: %s"%scheme
         assert set(target) <= {'age', 'sex', 'site'}, "Unknown target: %s"%target
         assert split in ['train', 'val', 'test', 'test_intra', 'validation'], "Unknown split: %s"%split
@@ -87,15 +87,18 @@ class OpenBHB(Dataset):
             self.scheme = self.load_pickle(os.path.join(root, self._cv_scheme))[f][self.split]
 
         npy_files = {"vbm": "%s_t1mri_mwp1_gs-raw_data64.npy",
-                     "quasi_raw": "%s_t1mri_quasi_raw_data32_1.5mm_skimage.npy"}
+                     "quasi_raw": "%s_t1mri_quasi_raw_data32_1.5mm_skimage.npy",
+                     "skeleton": "%s_t1mri_skeleton_data64.npy"}
 
         pd_files = {"vbm": "%s_t1mri_mwp1_participants.csv",
-                    "quasi_raw": "%s_t1mri_quasi_raw_participants.csv"}
+                    "quasi_raw": "%s_t1mri_quasi_raw_participants.csv",
+                    "skeleton": "%s_t1mri_skeleton_participants.csv"}
 
 
         ## 1) Loads globally all the data for a given pre-processing
         # TODO: change folder name according to preproc
-        folder = self.preproc if preproc != "vbm" else "cat12vbm"
+        preproc_folders = {"vbm": "cat12vbm", "quasi_raw": "quasi_raw", "skeleton": "morphologist"}
+        folder = preproc_folders[preproc]
         _root = os.path.join(root, folder)
         df_open_bhb = pd.concat([pd.read_csv(os.path.join(_root, pd_files[self.preproc] % db)) for db in self._studies],
                                 ignore_index=True, sort=False)
@@ -327,7 +330,7 @@ class OpenBHB(Dataset):
         """
 
         assert operator in ['|', '&'], "Unknown operator: %s"%operator
-        assert preproc in ['vbm', 'quasi_raw'], "Unknown preprocessing: %s"%preproc
+        assert preproc in ['vbm', 'quasi_raw', 'skeleton'], "Unknown preprocessing: %s"%preproc
 
         d_train = OpenBHB(root, preproc=preproc, scheme="cv", split="train", fold=0)
         d_test = OpenBHB(root, preproc=preproc, scheme="cv", split="test", fold=0)

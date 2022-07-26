@@ -119,13 +119,16 @@ class BaseTrainer():
         try:
             if preproc == "vbm":
                 mask = nibabel.load(os.path.join(args.root, "mni_cerebrum-gm-mask_1.5mm.nii.gz"))
-            else:
+            elif preproc == "quasi_raw":
                 mask = nibabel.load(os.path.join(args.root, "mni_raw_brain-mask_1.5mm.nii.gz"))
+            #elif preproc == "skeleton":
+            #    mask = nibabel.load(os.path.join(args.root, "mni_skeleton_brain-mask_1.5mm.nii.gz"))
         except FileNotFoundError:
             raise FileNotFoundError("Brain masks not found. You can find them in /masks directory "
                                     "and mv them to this directory: %s"%args.root)
 
         mask = (mask.get_data() != 0)
+        # Depreciation warning : mask = (mask.get_fdata() != 0)
         _manager_cls = None
         if args.pb in ["age", "sex"]:
             if args.N_train_max <= 5000:

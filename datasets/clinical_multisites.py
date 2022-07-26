@@ -42,7 +42,7 @@ class ClinicalBase(ABC, Dataset):
                  load_data: bool=False):
         """
         :param root: str, path to the root directory containing the different .npy and .csv files
-        :param preproc: str, must be either VBM ('vbm'), Quasi-Raw ('quasi_raw')
+        :param preproc: str, must be either VBM ('vbm'), Quasi-Raw ('quasi_raw') or Skeleton ('skeleton')
         :param target: str or [str], either 'dx' or 'site'.
         :param split: str, either 'train', 'val', 'test' (inter) or (eventually) 'test_intra'
         :param transforms (callable, optional): A function/transform that takes in
@@ -52,7 +52,7 @@ class ClinicalBase(ABC, Dataset):
         """
         if isinstance(target, str):
             target = [target]
-        assert preproc in ['vbm', 'quasi_raw'], "Unknown preproc: %s"%preproc
+        assert preproc in ['vbm', 'quasi_raw', 'skeleton'], "Unknown preproc: %s"%preproc
         assert set(target) <= {'diagnosis', 'site'}, "Unknown target: %s"%target
         assert split in ['train', 'val', 'test', 'test_intra', 'validation'], "Unknown split: %s"%split
 
@@ -72,14 +72,17 @@ class ClinicalBase(ABC, Dataset):
             root, self._train_val_test_scheme))[self.split]
 
         npy_files = {"vbm": "%s_t1mri_mwp1_gs-raw_data64.npy",
-                     "quasi_raw": "%s_t1mri_quasi_raw_data32_1.5mm_skimage.npy"}
+                     "quasi_raw": "%s_t1mri_quasi_raw_data32_1.5mm_skimage.npy",
+                     "skeleton": "%s_t1mri_skeleton_data64.npy"}
 
         pd_files = {"vbm": "%s_t1mri_mwp1_participants.csv",
-                    "quasi_raw": "%s_t1mri_quasi_raw_participants.csv"}
+                    "quasi_raw": "%s_t1mri_quasi_raw_participants.csv",
+                    "skeleton": "%s_t1mri_skeleton_participants.csv"}
 
 
         ## 1) Loads globally all the data for a given pre-processing
-        folder = self.preproc if preproc != "vbm" else "cat12vbm"
+        preproc_folders = {"vbm": "cat12vbm", "quasi_raw": "quasi_raw", "skeleton": "morphologist"}
+        folder = preproc_folders[preproc]
         _root = os.path.join(root, folder)
         df = pd.concat([pd.read_csv(os.path.join(_root, pd_files[self.preproc] % db)) for db in self._studies],
                        ignore_index=True, sort=False)
