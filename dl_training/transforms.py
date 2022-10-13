@@ -436,3 +436,53 @@ class Downsample(object):
         down_arr = arr[tuple(slices)]
 
         return down_arr
+
+
+class Binarize(object):
+
+    def __init__(self, one_values=None, threshold=None, with_channels=False):
+        """ Initialize the instance.
+            Parameters
+            ----------
+            one_values: list
+                the value of the input to be set to 1 in the output
+            with_channels: bool, default False
+                if set expect the array to contain the channels in first dimension.
+                if set expect one_values and threshold to be a list of list with dimensions (nb_channels, ..)
+            """
+        self.threshold = threshold
+        self.one_values = one_values
+        if self.one_values is None and self.threshold is None:
+            self.threshold = 0
+        self.with_channels = with_channels
+
+    def __call__(self, arr):
+        """ Binarize an array according to one values.
+            Parameters
+            ----------
+            arr: np.array
+                an input array
+            Returns
+            -------
+            bin_arr: np.array
+                the binarize array.
+       """
+        if self.with_channels:
+            data = []
+            for ch, _arr in enumerate(arr):
+                data.append(self._apply_binarize(_arr, self.one_values[ch], self.threshold[ch]))
+            return np.asarray(data)
+        else:
+            return self._apply_binarize(arr, self.one_values, self.threshold)
+
+    @staticmethod
+    def _apply_binarize(arr, one_values, threshold):
+        """ See Binarize.__call__().
+        """
+        bin_arr = np.zeros_like(arr)
+        if one_values is not None:
+            bin_arr[np.isin(arr, one_values)] = 1
+        if threshold is not None:
+            bin_arr[arr > threshold] = 1
+
+        return bin_arr
