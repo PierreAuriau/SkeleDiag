@@ -199,6 +199,7 @@ class Base(object):
                 train=True,
                 validation=True,
                 fold_index=fold)
+            min_loss, best_model, best_epoch = None, None, None
             for epoch in range(nb_epochs):
                 loss, values = self.train(loader.train, fold, epoch, **kwargs_train)
 
@@ -214,7 +215,7 @@ class Base(object):
                         subprocess.check_call(['mkdir', '-p', checkpointdir])
                         self.logger.info("Directory %s created."%checkpointdir)
                     checkpoint(
-                        model=self.model,
+                        model=self.model.state_dict(),
                         epoch=epoch,
                         fold=fold,
                         outdir=checkpointdir,
@@ -234,6 +235,19 @@ class Base(object):
                             outdir=checkpointdir,
                             epoch=epoch,
                             fold=fold)
+                if min_loss is None or loss < min_loss:
+                    min_loss = loss
+                    best_epoch = epoch
+                    best_model = deepcopy(self.model.state_dict())
+            if best_epoch % nb_epochs_per_saving != 0:
+                checkpoint(
+                    model=best_model,
+                    epoch=best_epoch,
+                    fold=fold,
+                    outdir=checkpointdir,
+                    name=exp_name,
+                    state_dict=True
+                )
         return train_history, valid_history
 
     def train(self, loader,fold=None, epoch=None, **kwargs):

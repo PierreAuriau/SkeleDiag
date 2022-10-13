@@ -57,7 +57,7 @@ def setup_logging(level="info", logfile=None):
     if level != logging.DEBUG:
         warnings.simplefilter("ignore", DeprecationWarning)
 
-def checkpoint(model, epoch, fold, outdir, name=None, optimizer=None, scheduler=None,
+def checkpoint(model, epoch, fold, outdir, name=None, optimizer=None, scheduler=None, state_dict=False,
                **kwargs):
     """ Save the weights of a given model.
 
@@ -81,17 +81,27 @@ def checkpoint(model, epoch, fold, outdir, name=None, optimizer=None, scheduler=
     """
 
     name = get_chk_name(name, fold, epoch)
-    outfile = os.path.join(
-        outdir, name)
-    if optimizer is not None:
-        kwargs.update(optimizer=optimizer.state_dict())
-    if scheduler is not None:
-        kwargs.update(scheduler=scheduler.state_dict())
-    torch.save({
-        "fold": fold,
-        "epoch": epoch,
-        "model": model.state_dict(),
-        **kwargs}, outfile)
+    outfile = os.path.join(outdir, name)
+    if state_dict:
+        if optimizer is not None:
+            kwargs.update(optimizer=optimizer)
+        if scheduler is not None:
+            kwargs.update(scheduler=scheduler)
+        torch.save({
+            "fold": fold,
+            "epoch": epoch,
+            "model": model,
+            **kwargs}, outfile)
+    else:
+        if optimizer is not None:
+            kwargs.update(optimizer=optimizer.state_dict())
+        if scheduler is not None:
+            kwargs.update(scheduler=scheduler.state_dict())
+        torch.save({
+            "fold": fold,
+            "epoch": epoch,
+            "model": model,
+            **kwargs}, outfile)
     return outfile
 
 def reset_weights(model, checkpoint=None):
