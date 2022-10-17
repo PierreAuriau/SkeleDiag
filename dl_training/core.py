@@ -340,8 +340,8 @@ class Base(object):
         if saving_dir is not None:
             if not os.path.isdir(saving_dir):
                 subprocess.check_call(['mkdir', '-p', saving_dir])
-                self.logger.info("Directory %s created."%saving_dir)
-            with open(os.path.join(saving_dir, (exp_name or 'test')+'.pkl'), 'wb') as f:
+                self.logger.info("Directory %s created." % saving_dir)
+            with open(os.path.join(saving_dir, f"Test_{exp_name}.pkl"), 'wb') as f:
                 pickle.dump({'y_pred': y, 'y_true': y_true, 'loss': loss, 'metrics': values}, f)
 
         return y, X, y_true, loss, values
