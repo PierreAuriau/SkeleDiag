@@ -21,6 +21,7 @@ import torch
 import torch.nn.functional as func
 from torch.nn import DataParallel
 from torch.utils.data import DataLoader
+from torch.cuda.amp import GradScaler, autocast
 from tqdm import tqdm
 import numpy as np
 # Package import
@@ -199,9 +200,10 @@ class Base(object):
                 train=True,
                 validation=True,
                 fold_index=fold)
+            scaler = GradScaler()
             min_loss, best_model, best_epoch = None, None, None
             for epoch in range(nb_epochs):
-                loss, values = self.train(loader.train, fold, epoch, **kwargs_train)
+                loss, values = self.train(loader.train, fold, epoch, scaler, **kwargs_train)
 
                 train_history.log((fold, epoch), loss=loss, **values)
                 train_history.summary()
@@ -250,7 +252,7 @@ class Base(object):
                 )
         return train_history, valid_history
 
-    def train(self, loader,fold=None, epoch=None, **kwargs):
+    def train(self, loader, fold=None, epoch=None, scaler=None, **kwargs):
         """ Train the model on the trained data.
 
         Parameters
@@ -289,11 +291,15 @@ class Base(object):
             list_targets.append(_targets)
 
             self.optimizer.zero_grad()
-            outputs = self.model(inputs)
-            batch_loss = self.loss(outputs, *list_targets)
-            batch_loss.backward()
-            self.optimizer.step()
 
+            with autocast():
+                outputs = self.model(inputs)
+                batch_loss = self.loss(outputs, *list_targets)
+
+            scaler.scale(batch_loss).backward()
+            scaler.step(self.optimizer)
+
+            scaler.update()
             losses.append(float(batch_loss))
             y_pred.extend(outputs.detach().cpu().numpy())
             y_true.extend(list_targets[0].detach().cpu().numpy())
