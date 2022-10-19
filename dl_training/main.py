@@ -12,7 +12,7 @@ if __name__=="__main__":
 
     # Data location + saving paths
     parser.add_argument("--root", type=str, required=True, help="Path to data root directory")
-    parser.add_argument("--preproc", type=str, default='vbm', choices=['vbm', 'quasi_raw'])
+    parser.add_argument("--preproc", type=str, default='vbm', choices=['vbm', 'quasi_raw', "skeleton"])
     parser.add_argument("--checkpoint_dir", type=str)
     parser.add_argument("--exp_name", type=str, required=True)
     parser.add_argument("--outfile_name", type=str, help="The output file name used to save the results in testing mode.")
