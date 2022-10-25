@@ -286,6 +286,8 @@ class Base(object):
                     _targets.append(item.to(self.device))
             if len(_targets) == 1:
                 _targets = _targets[0]
+            if _targets.size() == torch.Size([]):
+                _targets = _targets.unsqueeze(0)
             list_targets.append(_targets)
 
             self.optimizer.zero_grad()
