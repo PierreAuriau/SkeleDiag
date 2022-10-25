@@ -183,7 +183,7 @@ class ClinicalBase(ABC, Dataset):
         """
         _source_keys = df[unique_keys].apply(lambda row: '_'.join(row.values.astype(str)), axis=1)
         if check_uniqueness:
-            assert len(set(_source_keys)) == len(_source_keys), "Multiple identique identifiers found"
+            assert len(set(_source_keys)) == len(_source_keys), f"Multiple identique identifiers found"
         _target_keys = self.scheme[unique_keys].apply(lambda row: '_'.join(row.values.astype(str)), axis=1)
         mask = _source_keys.isin(_target_keys).values.astype(np.bool)
         return mask
@@ -194,7 +194,8 @@ class ClinicalBase(ABC, Dataset):
         :return: TIV and tissue volumes defined by the Neuromorphometrics atlas
         """
         metadata = ["age", "sex", "tiv"] + [k for k in df.keys() if "GM_Vol" in k or "WM_Vol" in k or "CSF_Vol" in k]
-        assert len(metadata) == 290, "Missing meta-data values (%i != %i)"%(len(metadata), 290)
+        if len(metadata) != 290:
+            self.logger.warning(f"Missing meta-data values ({len(metadata)} != 290)")
         assert set(metadata) <= set(df.keys()), "Missing meta-data columns: {}".format(set(metadata) - set(df.keys))
         if df[metadata].isna().sum().sum() > 0:
             self.logger.warning("NaN values found in meta-data")
