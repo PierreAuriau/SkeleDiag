@@ -211,7 +211,7 @@ class OpenBHBDataManager:
         return SetItem(train=_train, **test_loaders)
 
     @staticmethod
-    def get_input_transforms(preproc, model):
+    def get_input_transforms(preproc, model="base"):
         if preproc in ["vbm", "quasi_raw"]:
             # Input size 121 x 145 x 121
             input_transforms = Compose(
@@ -260,7 +260,7 @@ class BHBDataManager(OpenBHBDataManager):
         # Linear Adj. (on site) residualization attributes
         self.formula_res, self.formula_full = "site", "site + age + sex"
 
-        input_transforms = self.get_input_transforms(preproc=preproc, model=model)
+        input_transforms = self.get_input_transforms(preproc=preproc)
 
         self.dataset["train"] = [BHB(root, preproc=preproc, scheme=self.scheme, split="train",
                                          transforms=input_transforms, target=labels)
@@ -301,7 +301,7 @@ class ClinicalDataManager(OpenBHBDataManager):
         # Linear Adj. (on site) residualization attributes
         self.formula_res, self.formula_full = "site + age + sex", "site + age + sex + diagnosis"
 
-        input_transforms = self.get_input_transforms(preproc=preproc, model="base")
+        input_transforms = self.get_input_transforms(preproc=preproc)
 
         dataset_cls = None
         if db == "scz":
