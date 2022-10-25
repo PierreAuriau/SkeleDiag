@@ -3,7 +3,7 @@ from datasets.bhb_10k import BHB
 from datasets.clinical_multisites import SCZDataset, BipolarDataset, ASDDataset, SubSCZDataset, \
     SubBipolarDataset, SubASDDataset
 from dl_training.self_supervision.sim_clr import SimCLROpenBHB, SimCLRSubOpenBHB
-from dl_training.transforms import Padding, Crop, Normalize, Standardize
+from dl_training.transforms import Padding, Crop, Normalize, Standardize, Binarize
 from torchvision.transforms.transforms import Compose
 from torch.utils.data import DataLoader, SequentialSampler, RandomSampler
 from sklearn.base import TransformerMixin, BaseEstimator
