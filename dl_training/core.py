@@ -286,12 +286,14 @@ class Base(object):
                     _targets.append(item.to(self.device))
             if len(_targets) == 1:
                 _targets = _targets[0]
-            if _targets.size() == torch.Size([]):
-                _targets = _targets.unsqueeze(0)
+            #if _targets.size() == torch.Size([]):
+            #    _targets = _targets.unsqueeze(0)
             list_targets.append(_targets)
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
+            #if outputs.size() == torch.Size([]):
+            #    outputs = outputs.unsqueeze(0)
             batch_loss = self.loss(outputs, *list_targets)
             batch_loss.backward()
             self.optimizer.step()

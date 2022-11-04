@@ -144,7 +144,7 @@ class BaseTrainer():
         kwargs_manager = dict(labels=labels, sampler=args.sampler, batch_size=args.batch_size,
                               residualize=args.residualize, mask=mask, number_of_folds=args.nb_folds,
                               N_train_max=args.N_train_max, device=('cuda' if args.cuda else 'cpu'),
-                              num_workers=args.num_cpu_workers, pin_memory=True, drop_last=False)
+                              num_workers=args.num_cpu_workers, pin_memory=True, drop_last=True)
 
         if args.pb in ["age", "sex", "self_supervised"]:
             kwargs_manager["model"] = "SimCLR" if args.pb == "self_supervised" else "base"
