@@ -3,6 +3,8 @@ from dl_training.training import BaseTrainer
 from dl_training.testing import OpenBHBTester
 import torch
 import logging
+import wandb
+import os
 
 if __name__=="__main__":
 
@@ -61,6 +63,9 @@ if __name__=="__main__":
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--test", action="store_true")
 
+    # Wandb implementation for sweeps
+    parser.add_argument("--sweep", action="store_true")
+
     args = parser.parse_args()
 
     if not torch.cuda.is_available():
@@ -74,9 +79,21 @@ if __name__=="__main__":
         args.train = True
         logger.info("No mode specify: training mode is set automatically")
 
+    if args.sweep:
+        # Wandb
+        from wandb_log import set_environment_variables, save_hyperparameters
+        run = wandb.init(config=args)
+        run_name = run.name
+        set_environment_variables(args=args)
+        args.checkpoint_dir = os.path.join(args.checkpoint_dir, run_name)
+        save_hyperparameters(save_dir=args.checkpoint_dir)
+
     if args.train:
         trainer = BaseTrainer(args)
-        trainer.run()
+        train_history, valid_history = trainer.run()
+        if args.sweep:
+            from wandb_log import main_log
+            main_log(train_history, valid_history)
         # do not consider the pretrained path anymore since it will be eventually computed automatically
         args.pretrained_path = None
 
