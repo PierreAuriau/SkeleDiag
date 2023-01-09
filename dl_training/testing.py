@@ -72,9 +72,9 @@ class OpenBHBTester(BaseTester):
                                   os.path.join(self.args.checkpoint_dir, get_chk_name(self.args.exp_name, fold, epoch))
                 for t in tests:
                     if self.args.outfile_name is None:
-                        outfile = "%s%s"%("Test_"+t, self.args.exp_name)
+                        outfile = "%s%s" % (t, self.args.exp_name)
                     else:
-                        outfile = "%s%s"%(t, self.args.outfile_name)
+                        outfile = "%s%s" % (t, self.args.outfile_name)
                     exp_name = outfile + "_fold{}_epoch{}".format(fold, epoch)
                     loader = self.manager.get_dataloader(test=(t==""),
                                                          test_intra=(t!=""),
