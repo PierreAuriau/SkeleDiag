@@ -74,6 +74,10 @@ class History(object):
             raise ValueError("Step must be an int or a tuple.")
         self.step = step
         self.metrics |= set(kwargs.keys())
+        if "y_pred" in kwargs.keys():
+            self.metrics.remove("y_pred")
+        if "y_true" in kwargs.keys():
+            self.metrics.remove("y_true")
         if step not in self.history:
             self.history[step] = {}
         for key, val in kwargs.items():
