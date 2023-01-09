@@ -82,7 +82,7 @@ if __name__=="__main__":
     if args.sweep:
         # Wandb
         from wandb_log import set_environment_variables, save_hyperparameters
-        run = wandb.init(config=args)
+        run = wandb.init(config=args, dir=args.checkpoint_dir)
         run_name = run.name
         set_environment_variables(args=args)
         args.checkpoint_dir = os.path.join(args.checkpoint_dir, run_name)
