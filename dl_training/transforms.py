@@ -10,6 +10,7 @@ import numpy as np
 from scipy.ndimage import rotate, affine_transform
 from skimage import transform as sk_tf
 import torch
+import torch.nn.functional as F
 
 class Scaler(object):
     def __init__(self, scale=1):
@@ -486,3 +487,43 @@ class Binarize(object):
             bin_arr[arr > threshold] = 1
 
         return bin_arr
+
+
+class GaussianConvolution(object):
+
+    def __init__(self, sigma, size):
+        """ Initialize the instance.
+            Parameters
+            ----------
+            size : the size of the Gaussian kernel
+            sigma : the standard deviation of the Gaussian probabilty distribution
+        """
+        self.size = int(size)
+        if self.size % 2 == 0:
+            self.size += 1
+        self.sigma = sigma
+
+    def make_gaussian_kernel(self):
+        """ Create a gaussian kernel with size and sigma
+        """
+        ts = torch.linspace(-self.size // 2, self.size // 2 + 1, self.size)
+        gauss = torch.exp((-(ts / self.sigma) ** 2 / 2))
+        kernel = gauss / gauss.sum()
+        return kernel
+
+    def __call__(self, arr):
+        """ Convolution of an array with a gaussian kernel
+        """
+        tensor = torch.Tensor(arr)
+        tensor = tensor.reshape(1, *tensor.shape)
+        kernel = self.make_gaussian_kernel()
+        kernel_3d = torch.einsum('i,j,k->ijk', kernel, kernel, kernel)
+        kernel_3d = kernel_3d / kernel_3d.sum()
+        kernel_3d = kernel_3d.reshape(1, 1, *kernel_3d.shape)
+        assert tensor.type() == kernel_3d.type(), f"The type of the kernel ({kernel_3d.type()}) " \
+                                                  f"and the type of the tensor ({tensor.type()})" \
+                                                  f"is not the same"
+        gauss_tensor = F.conv3d(tensor, kernel_3d, stride=1, padding=len(kernel) // 2)
+        gauss_arr = gauss_tensor.squeeze().numpy()
+
+        return gauss_arr
