@@ -201,9 +201,9 @@ class Base(object):
                 fold_index=fold)
             min_loss, best_model, best_epoch = None, None, None
             for epoch in range(nb_epochs):
-                loss, values = self.train(loader.train, fold, epoch, **kwargs_train)
+                y_pred, y_true, loss, values = self.train(loader.train, fold, epoch, **kwargs_train)
 
-                train_history.log((fold, epoch), loss=loss, **values)
+                train_history.log((fold, epoch), loss=loss, y_pred=y_pred, y_true=y_true, **values)
                 train_history.summary()
                 if scheduler is not None:
                     scheduler.step()
@@ -226,8 +226,8 @@ class Base(object):
                         epoch=epoch,
                         fold=fold)
                 if with_validation:
-                    _, _, _, loss, values = self.test(loader.validation, **kwargs_train)
-                    valid_history.log((fold, epoch), validation_loss=loss, **values)
+                    y_pred, y_true, X, loss, values = self.test(loader.validation, **kwargs_train)
+                    valid_history.log((fold, epoch), validation_loss=loss, y_pred=y_pred, y_true=y_true, **values)
                     valid_history.summary()
                     if checkpointdir is not None and (epoch % nb_epochs_per_saving == 0 or epoch == nb_epochs-1) \
                             and epoch > 0:
@@ -286,14 +286,10 @@ class Base(object):
                     _targets.append(item.to(self.device))
             if len(_targets) == 1:
                 _targets = _targets[0]
-            #if _targets.size() == torch.Size([]):
-            #    _targets = _targets.unsqueeze(0)
             list_targets.append(_targets)
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
-            #if outputs.size() == torch.Size([]):
-            #    outputs = outputs.unsqueeze(0)
             batch_loss = self.loss(outputs, *list_targets)
             batch_loss.backward()
             self.optimizer.step()
@@ -316,7 +312,7 @@ class Base(object):
                 values[name] = 0
             values[name] = float(metric(torch.tensor(y_pred), torch.tensor(y_true)))
         pbar.close()
-        return loss, values
+        return y_pred, y_true, loss, values
 
     def testing(self, loader: DataLoader, saving_dir=None, exp_name=None, **kwargs):
         """ Evaluate the model.
