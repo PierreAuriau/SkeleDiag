@@ -184,6 +184,10 @@ class OpenBHBDataManager:
                 dataset = dataset.transform(residualizer, labels[["site"]].astype(object), mask=self.mask,
                                             discrete_covariates=labels[self.discrete_vars],
                                             continuous_covariates=labels[self.continuous_vars])
+            drop_last = True if len(dataset) % self.batch_size == 1 else False
+            if drop_last and t != "validation":
+                self.logger.warning(f"The last subject will not be tested ! "
+                                    f"Change the batch size ({self.batch_size}) to test on all subject")
             test_loaders[t] = DataLoader(dataset, batch_size=self.batch_size,
                                          collate_fn=OpenBHBDataManager.collate_fn,
                                          **self.dataloader_kwargs)
@@ -203,9 +207,10 @@ class OpenBHBDataManager:
                 dataset = dataset.transform(residualizer, labels[["site"]].astype(object),
                                             discrete_covariates=labels[self.discrete_vars],
                                             continuous_covariates=labels[self.continuous_vars], mask=self.mask)
+            drop_last = True if len(dataset) % self.batch_size == 1 else False
             _train = DataLoader(
                 dataset, batch_size=self.batch_size, sampler=sampler,
-                collate_fn=OpenBHBDataManager.collate_fn,
+                collate_fn=OpenBHBDataManager.collate_fn, drop_last=drop_last,
                 **self.dataloader_kwargs)
 
         return SetItem(train=_train, **test_loaders)
