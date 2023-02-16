@@ -1,3 +1,7 @@
+import nibabel
+import os
+import numpy as np
+
 from dl_training.core import Base
 from dl_training.datamanager import OpenBHBDataManager, BHBDataManager, ClinicalDataManager
 from dl_training.losses import *
@@ -6,8 +10,6 @@ from dl_training.models.densenet import *
 from dl_training.models.resnet import *
 from dl_training.models.sfcn import SFCN
 from dl_training.self_supervision.sim_clr import SimCLR
-import nibabel
-import os
 
 
 class BaseTrainer:
@@ -48,15 +50,20 @@ class BaseTrainer:
         return train_history, valid_history
 
     def build_scheduler(self, step_size, gamma):
-        if isinstance(step_size, int):
+        if len(step_size) == 1:
             return torch.optim.lr_scheduler.StepLR(self.optimizer, gamma=gamma,
                                                    step_size=step_size)
-        elif isinstance(step_size, list):
+        elif len(step_size) > 1:
+            num_epochs = list(np.cumsum(step_size))
+            if num_epochs[-1] > self.args.nb_epochs:
+                raise ValueError(f"Step sizes of the scheduler exceed the number of epochs "
+                                 f"({num_epochs[-1]}/{self.args.nb_epochs})")
+            while num_epochs[-1] + step_size[-1] < self.args.nb_epochs:
+                num_epochs.append(num_epochs[-1] + step_size[-1])
             return torch.optim.lr_scheduler.MultiStepLR(self.optimizer, gamma=gamma,
-                                                        milestones=step_size)
+                                                        milestones=num_epochs)
         else:
-            raise NotImplementedError(f"Wrong step size scheduler parameter type: "
-                                      f"{type(step_size)} instead of int or list")
+            raise NotImplementedError(f"Wrong step size scheduler : {step_size}")
 
     @staticmethod
     def build_metrics(pb):

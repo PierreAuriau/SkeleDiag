@@ -17,8 +17,8 @@ if __name__=="__main__":
     parser.add_argument("--preproc", type=str, default='vbm', choices=['vbm', 'quasi_raw', "skeleton"])
     parser.add_argument("--checkpoint_dir", type=str)
     parser.add_argument("--exp_name", type=str, required=True)
-    parser.add_argument("--outfile_name", type=str, help="The output file name used to save the results in testing mode.")
-
+    parser.add_argument("--outfile_name", type=str,
+                        help="The output file name used to save the results in testing mode.")
     parser.add_argument("--N_train_max", type=int, default=None, help="Maximum number of training samples "
                                                                       "to be used per fold")
     parser.add_argument("--pb", type=str, choices=["age", "sex", "scz", "bipolar", "asd", "self_supervised"])
@@ -38,7 +38,7 @@ if __name__=="__main__":
     parser.add_argument("--lr", type=float, required=True, help="Initial learning rate")
     parser.add_argument("--gamma_scheduler", type=float, required=True)
     parser.add_argument("--nb_epochs", type=int, default=300)
-    parser.add_argument("--step_size_scheduler", type=eval, default=10)
+    parser.add_argument("--step_size_scheduler", nargs="+", type=int, default=10)
 
     # Dataloader: set them
     parser.add_argument("--num_cpu_workers", type=int, default=3, help="Number of workers assigned to do the "
