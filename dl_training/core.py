@@ -337,7 +337,8 @@ class Base(object):
         values: dict
             the values of the metrics if true data availble.
         """
-        y, y_true, X, loss, values = self.test(loader)
+        set_name = "internal test" if exp_name.startswith("Intra") else "external test"
+        y, y_true, X, loss, values = self.test(loader, set_name)
 
         if saving_dir is not None:
             if not os.path.isdir(saving_dir):
@@ -348,7 +349,7 @@ class Base(object):
 
         return y, X, y_true, loss, values
 
-    def test(self, loader):
+    def test(self, loader, set_name="validation"):
         """ Evaluate the model on the tests or validation data.
 
         Parameter
@@ -411,14 +412,14 @@ class Base(object):
                 aux_losses = (self.model.get_aux_losses() if hasattr(self.model, 'get_aux_losses') else dict())
                 aux_losses.update(self.loss.get_aux_losses() if hasattr(self.loss, 'get_aux_losses') else dict())
                 for name, aux_loss in aux_losses.items():
-                    name += " on validation set"
+                    name += f" on {set_name} set"
                     if name not in values:
                         values[name] = 0
                     values[name] += aux_loss / nb_batch
 
                 # Now computes the metrics with (y, y_true)
                 for name, metric in self.metrics.items():
-                    name += " on validation set"
+                    name += f" on {set_name} set"
                     values[name] = metric(torch.tensor(y), torch.tensor(y_true))
             pbar.close()
 
