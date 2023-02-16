@@ -1,15 +1,16 @@
 from dl_training.core import Base
 from dl_training.datamanager import OpenBHBDataManager, BHBDataManager, ClinicalDataManager
-from dl_training.self_supervision.sim_clr import SimCLR
-from dl_training.models.resnet import *
-from dl_training.models.densenet import *
 from dl_training.losses import *
-from dl_training.models.sfcn import SFCN
 from dl_training.models.alexnet import AlexNet3D_Dropout
-import nibabel, os
+from dl_training.models.densenet import *
+from dl_training.models.resnet import *
+from dl_training.models.sfcn import SFCN
+from dl_training.self_supervision.sim_clr import SimCLR
+import nibabel
+import os
 
 
-class BaseTrainer():
+class BaseTrainer:
 
     def __init__(self, args):
         self.args = args
@@ -19,8 +20,8 @@ class BaseTrainer():
         self.metrics = BaseTrainer.build_metrics(self.args.pb)
 
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=args.lr, weight_decay=5e-5)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, gamma=args.gamma_scheduler,
-                                                         step_size=args.step_size_scheduler)
+        self.scheduler = self.build_scheduler(args.step_size_scheduler, args.gamma_scheduler)
+
         model_cls = SimCLR if args.pb == "self_supervised" else Base
         self.kwargs_train = dict()
 
@@ -45,6 +46,17 @@ class BaseTrainer():
                                                            **self.kwargs_train)
 
         return train_history, valid_history
+
+    def build_scheduler(self, step_size, gamma):
+        if isinstance(step_size, int):
+            return torch.optim.lr_scheduler.StepLR(self.optimizer, gamma=gamma,
+                                                   step_size=step_size)
+        elif isinstance(step_size, list):
+            return torch.optim.lr_scheduler.MultiStepLR(self.optimizer, gamma=gamma,
+                                                        milestones=step_size)
+        else:
+            raise NotImplementedError(f"Wrong step size scheduler parameter type: "
+                                      f"{type(step_size)} instead of int or list")
 
     @staticmethod
     def build_metrics(pb):
