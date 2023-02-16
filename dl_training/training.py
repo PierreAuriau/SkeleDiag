@@ -21,7 +21,7 @@ class BaseTrainer:
         self.loss = BaseTrainer.build_loss(self.args)
         self.metrics = BaseTrainer.build_metrics(self.args.pb)
 
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=args.lr, weight_decay=5e-5)
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
         self.scheduler = self.build_scheduler(args.step_size_scheduler, args.gamma_scheduler)
 
         model_cls = SimCLR if args.pb == "self_supervised" else Base
@@ -74,7 +74,7 @@ class BaseTrainer:
         elif pb == "self_supervised":
             metrics = ["accuracy"] # for SimCLR, accuracy to retrieve the original views from same image
         else:
-            raise NotImplementedError("Unknown pb: %s"%pb)
+            raise NotImplementedError("Unknown pb: %s" % pb)
         return metrics
 
     @staticmethod
@@ -90,7 +90,7 @@ class BaseTrainer:
             loss = nn.L1Loss()
         # Self-supervised task
         elif args.pb == "self_supervised":
-            ## Default value for sigma == 5
+            # Default value for sigma == 5
             loss = WeaklySupervisedNTXenLoss(temperature=0.1, kernel="rbf", sigma=args.sigma, return_logits=True)
         else:
             raise ValueError("Unknown problem: %s"%args.pb)
