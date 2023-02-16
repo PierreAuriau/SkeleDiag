@@ -177,8 +177,8 @@ class Base(object):
             valid_history = History(name="Validation_%s"%(exp_name or ""))
         else:
             valid_history = None
-        print(self.loss)
-        print(self.optimizer)
+        self.logger.info(f"Loss : {self.loss}")
+        self.logger.info(f"Optimizer : {self.optimizer}")
         folds = range(manager.get_nb_folds())
         if fold_index is not None:
             if isinstance(fold_index, int):
@@ -207,8 +207,8 @@ class Base(object):
                 train_history.summary()
                 if scheduler is not None:
                     scheduler.step()
-                    print('Scheduler lr: {}'.format(scheduler.get_lr()), flush=True)
-                    print('Optimizer lr: %f'%self.optimizer.param_groups[0]['lr'], flush=True)
+                    self.logger.info('Scheduler lr: {}'.format(scheduler.get_last_lr()))
+                    self.logger.info('Optimizer lr: %f' % self.optimizer.param_groups[0]['lr'])
                 if checkpointdir is not None and (epoch % nb_epochs_per_saving == 0 or epoch == nb_epochs-1) \
                         and epoch > 0:
                     if not os.path.isdir(checkpointdir):
@@ -250,12 +250,14 @@ class Base(object):
                 )
         return train_history, valid_history
 
-    def train(self, loader,fold=None, epoch=None, **kwargs):
+    def train(self, loader, fold=None, epoch=None, **kwargs):
         """ Train the model on the trained data.
 
         Parameters
         ----------
         loader: a pytorch Dataloader
+        fold: number of the fold
+        epoch: number of the epoch
 
         Returns
         -------
@@ -267,7 +269,7 @@ class Base(object):
 
         self.model.train()
         nb_batch = len(loader)
-        pbar = tqdm(total=nb_batch, desc="Mini-Batch")
+        pbar = tqdm(total=nb_batch, desc=f"Mini-Batch ({fold},{epoch})s")
 
         values = {}
         iteration = 0
