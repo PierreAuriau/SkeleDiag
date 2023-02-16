@@ -31,7 +31,6 @@ if __name__=="__main__":
     # Depends on available CPU/GPU memory
     parser.add_argument("-b", "--batch_size", type=int, required=True)
 
-
     parser.add_argument("--nb_epochs_per_saving", type=int, default=5)
     parser.add_argument("--manual_seed", type=int, help="The manual seed to give to pytorch.")
 
@@ -82,9 +81,9 @@ if __name__=="__main__":
     if args.sweep:
         # Wandb
         from wandb_log import set_environment_variables, save_hyperparameters
+        set_environment_variables(args=args)
         run = wandb.init(config=args, dir=args.checkpoint_dir)
         run_name = run.name
-        set_environment_variables(args=args)
         args.checkpoint_dir = os.path.join(args.checkpoint_dir, run_name)
         save_hyperparameters(save_dir=args.checkpoint_dir)
 
