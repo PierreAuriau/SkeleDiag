@@ -17,10 +17,12 @@ import pandas as pd
 SetItem = namedtuple("SetItem", ["test", "train", "validation"], defaults=(None,) * 3)
 DataItem = namedtuple("DataItem", ["inputs", "outputs", "labels"])
 
+
 class Zscore(TransformerMixin, BaseEstimator):
     """
     Standardization per sample
     """
+
     def __init__(self, mean=0.0, std=1.0, eps=1e-8):
         self.mean = mean
         self.std = std
@@ -45,12 +47,12 @@ class StandardScalerBiased(StandardScaler):
 
 class OpenBHBDataManager:
 
-    def __init__(self, root: str, preproc: str, labels: List[str]=None, sampler: str="random",
-                 batch_size: int=1, number_of_folds: int=None, N_train_max: int=None,
-                 residualize: str=None, mask = None, model: str=None, device:str="cuda", **dataloader_kwargs):
-        assert model in [None, "SimCLR", "base"], "Unknown model: %s"%model
-        assert sampler in ["random", "sequential"], "Unknown sampler '%s'"%sampler
-        assert residualize in [None, "linear", "combat"], "Unknown residualizer %s"%residualize
+    def __init__(self, root: str, preproc: str, labels: List[str] = None, sampler: str = "random",
+                 batch_size: int = 1, number_of_folds: int = None, N_train_max: int = None,
+                 residualize: str = None, mask=None, model: str = None, device: str = "cuda", **dataloader_kwargs):
+        assert model in [None, "SimCLR", "base"], "Unknown model: %s" % model
+        assert sampler in ["random", "sequential"], "Unknown sampler '%s'" % sampler
+        assert residualize in [None, "linear", "combat"], "Unknown residualizer %s" % residualize
         self.logger = logging.getLogger("SMLvsDL")
         self.dataset = dict()
         self.labels = labels or []
@@ -109,8 +111,8 @@ class OpenBHBDataManager:
 
               See https://pytorch.org/docs/stable/data.html#dataloader-collate-fn.
               """
-        data = dict(outputs=None) # compliant with DataManager <collate_fn>
-        #data["inputs"] = torch.stack([torch.from_numpy(sample[0]) for sample in list_samples], dim=0).float()
+        data = dict(outputs=None)  # compliant with DataManager <collate_fn>
+        # data["inputs"] = torch.stack([torch.from_numpy(sample[0]) for sample in list_samples], dim=0).float()
         data["inputs"] = torch.stack([torch.from_numpy(np.copy(sample[0])) for sample in list_samples], dim=0).float()
         data["labels"] = torch.stack([torch.tensor(sample[1]) for sample in list_samples], dim=0).squeeze().float()
         return DataItem(**data)
@@ -122,10 +124,10 @@ class OpenBHBDataManager:
         :param fold_index: the training fold index used to fit the Residualizer
         :return: a tuple (Residualizer, dict(split: design matrix for this split)
         """
-        assert self.residualize in ["linear", "combat"], "Unknown residualization: %s"%type
+        assert self.residualize in ["linear", "combat"], "Unknown residualization: %s" % type
         if self.residualize == "linear":
             assert set(splits) <= {"train", "validation", "test", "test_intra"}
-        ## Fits a Residualizer on the training data
+        # Fits a Residualizer on the training data
         train_df = self.dataset["train"][fold_index].all_labels.copy()
         train_data, _ = self.dataset["train"][fold_index].get_data(mask=self.mask)
         train_data = train_data.reshape(len(train_data), -1)
@@ -139,7 +141,7 @@ class OpenBHBDataManager:
         test_indexes = {k: offset + np.arange(len(test_dfs[k])) for k, offset in zip(splits, offsets)}
         all_df = pd.concat([train_df] + [test_dfs[k] for k in splits], ignore_index=True)
 
-        all_df[self.discrete_vars+["site"]] = all_df[self.discrete_vars+["site"]].astype(object)
+        all_df[self.discrete_vars + ["site"]] = all_df[self.discrete_vars + ["site"]].astype(object)
 
         if self.residualize == "combat":
             residualizer = CombatModel()
@@ -153,8 +155,8 @@ class OpenBHBDataManager:
             residualizer = Residualizer(data=all_df, formula_res=self.formula_res, formula_full=self.formula_full)
             Zres = residualizer.get_design_mat(all_df)
             residualizer.fit(train_data, Zres[train_index])
-            del(train_data)  # free memory asap
-            return residualizer, {d: (Zres[test_indexes[d]] if d != "train" else Zres[train_index]) for d in splits }
+            del train_data  # free memory asap
+            return residualizer, {d: (Zres[test_indexes[d]] if d != "train" else Zres[train_index]) for d in splits}
 
         raise ValueError("Unknown type")
 
@@ -172,7 +174,7 @@ class OpenBHBDataManager:
 
         if self.residualize is not None:
             if residualizer is None:
-                (residualizer, Zres) = self.fit_residualizer(tests_to_return+['train'], fold_index)
+                (residualizer, Zres) = self.fit_residualizer(tests_to_return + ['train'], fold_index)
 
         test_loaders = dict()
         for t in tests_to_return:
@@ -227,7 +229,7 @@ class OpenBHBDataManager:
         elif preproc in ["skeleton"]:
             # Input size 128 x 152 x 128
             input_transforms = Compose(
-                [Padding([1, 128, 160, 128], mode='constant'), Binarize(one_values=[30, 60, 100, 110, 120])])
+                [Padding([1, 128, 160, 128], mode='constant'), Binarize(one_values=[30, 35, 60, 100, 110, 120])])
         else:
             raise ValueError("Unknown preproc: %s" % preproc)
         return input_transforms
@@ -235,16 +237,16 @@ class OpenBHBDataManager:
     def get_nb_folds(self):
         return self.number_of_folds
 
+
 class BHBDataManager(OpenBHBDataManager):
 
-    def __init__(self, root: str, preproc: str, labels: List[str]=None, sampler: str="random",
-                 batch_size: int=1, number_of_folds: int=None, N_train_max: int=None, residualize: bool=False,
-                 mask = None, model:str=None, device:str="cuda", scheme: str="train_val_test",
+    def __init__(self, root: str, preproc: str, labels: List[str] = None, sampler: str = "random",
+                 batch_size: int = 1, number_of_folds: int = None, N_train_max: int = None, residualize: bool = False,
+                 mask=None, model: str = None, device: str = "cuda", scheme: str = "train_val_test",
                  **dataloader_kwargs):
-
-        assert model in [None, "base"], "Unknown model: %s"%model
-        assert sampler in ["random", "sequential"], "Unknown sampler '%s'"%sampler
-        assert scheme == "train_val_test", "Scheme %s not implemented yet"%scheme
+        assert model in [None, "base"], "Unknown model: %s" % model
+        assert sampler in ["random", "sequential"], "Unknown sampler '%s'" % sampler
+        assert scheme == "train_val_test", "Scheme %s not implemented yet" % scheme
         assert N_train_max is None, "Sub-sampling BHB not implemented yet"
 
         self.logger = logging.getLogger("SMLvsDL")
@@ -268,26 +270,26 @@ class BHBDataManager(OpenBHBDataManager):
         input_transforms = self.get_input_transforms(preproc=preproc)
 
         self.dataset["train"] = [BHB(root, preproc=preproc, scheme=self.scheme, split="train",
-                                         transforms=input_transforms, target=labels)
+                                     transforms=input_transforms, target=labels)
                                  for _ in range(self.number_of_folds)]
         self.dataset["validation"] = [BHB(root, preproc=preproc, scheme=self.scheme, split="val",
-                                              transforms=input_transforms, target=labels)
+                                          transforms=input_transforms, target=labels)
                                       for _ in range(self.number_of_folds)]
         self.dataset["test"] = BHB(root, preproc=preproc, scheme=self.scheme, split="test",
-                                       transforms=input_transforms, target=labels)
+                                   transforms=input_transforms, target=labels)
         self.dataset["test_intra"] = BHB(root, preproc=preproc, scheme=self.scheme, split="test_intra",
                                          transforms=input_transforms, target=labels)
 
 
 class ClinicalDataManager(OpenBHBDataManager):
 
-    def __init__(self, root: str, preproc: str, db: str, labels: List[str]=None, sampler: str="random",
-                 batch_size: int=1, number_of_folds: int=None, N_train_max: int=None, residualize: str=None,
-                 mask = None, device:str="cuda", **dataloader_kwargs):
+    def __init__(self, root: str, preproc: str, db: str, labels: List[str] = None, sampler: str = "random",
+                 batch_size: int = 1, number_of_folds: int = None, N_train_max: int = None, residualize: str = None,
+                 mask=None, device: str = "cuda", **dataloader_kwargs):
 
-        assert db in ["scz", "bipolar", "asd"], "Unknown db: %s"%db
-        assert sampler in ["random", "sequential"], "Unknown sampler '%s'"%sampler
-        assert residualize in [None, "linear", "combat"], "Unkown residulalizer %s"%residualize
+        assert db in ["scz", "bipolar", "asd"], "Unknown db: %s" % db
+        assert sampler in ["random", "sequential"], "Unknown sampler '%s'" % sampler
+        assert residualize in [None, "linear", "combat"], "Unkown residulalizer %s" % residualize
 
         self.logger = logging.getLogger("SMLvsDL")
         self.dataset = dict()
@@ -333,7 +335,3 @@ class ClinicalDataManager(OpenBHBDataManager):
                                            transforms=input_transforms, target=labels)
         self.dataset["test_intra"] = dataset_cls(root, preproc=preproc, split="test_intra",
                                                  transforms=input_transforms, target=labels)
-
-
-
-
