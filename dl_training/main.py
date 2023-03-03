@@ -1,12 +1,14 @@
 import argparse
-from dl_training.training import BaseTrainer
-from dl_training.testing import OpenBHBTester
 import torch
 import logging
 import wandb
 import os
+from dl_training.training import BaseTrainer
+from dl_training.testing import OpenBHBTester
+from dl_trainin.utils import save_hyperparameters, setup_logging
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
 
     logger = logging.getLogger("SMLvsDL")
 
@@ -68,6 +70,11 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
+    # ---------------------------------------------------------------------------------------------------------------- #
+
+    # Create saving directory
+    os.makedirs(args.checkpoint_dir, exist_ok=True)
+
     if not torch.cuda.is_available():
         args.cuda = False
         logger.warning("cuda is not available and has been disabled.")
@@ -81,14 +88,15 @@ if __name__=="__main__":
 
     if args.sweep:
         # Wandb
-        from wandb_log import set_environment_variables, save_hyperparameters
+        from wandb_log import set_environment_variables
         set_environment_variables(args=args)
         run = wandb.init(config=args, dir=args.checkpoint_dir)
         run_name = run.name
         args.checkpoint_dir = os.path.join(args.checkpoint_dir, run_name)
-        save_hyperparameters(save_dir=args.checkpoint_dir)
+        os.makedirs(args.checkpoint_dir, exist_ok=True)
 
     if args.train:
+        save_hyperparameters(args)
         trainer = BaseTrainer(args)
         train_history, valid_history = trainer.run()
         if args.sweep:
