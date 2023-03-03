@@ -101,11 +101,11 @@ class History(object):
 
     def summary(self):
         last_step = self.steps[-1]
-        msg = "\n{:6s} {:15s}".format(self.name, repr(last_step))
+        msg = "{:6s} {:15s}".format(self.name, repr(last_step))
         for key in self.metrics:
             if key in self.history[last_step]:
-                msg += "\n{:6s}:{:10f}  ".format(key, self.history[last_step][key])
-        msg += "\n{}".format(str(self.get_total_time()))
+                msg += "| {:6s}:{:10f}  ".format(key, self.history[last_step][key])
+        msg += "| {}".format(str(self.get_total_time()))
         logger.info(msg)
 
     def get_total_time(self):
