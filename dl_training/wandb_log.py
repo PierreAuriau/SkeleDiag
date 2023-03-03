@@ -5,24 +5,21 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 import wandb
+import logging
+
+logger = logging.getLogger("SkeleDiag")
 
 
 def set_environment_variables(args):
     os.makedirs(args.checkpoint_dir, exist_ok=True)
     os.environ["WANDB_DIR"] = args.checkpoint_dir
-    print(os.environ["WANDB_DIR"])
+    logger.info(f"WandB directory : {os.environ['WANDB_DIR']}")
 
 
 def define_wandb_metrics(metrics):
     wandb.define_metric("epoch")
     for m in metrics.keys():
         wandb.define_metric(f"{m}/*", step_metric="epoch")
-
-
-def save_hyperparameters(save_dir):
-    os.makedirs(save_dir, exist_ok=True)
-    with open(os.path.join(save_dir, "hyperparameters.json"), "w") as f:
-        json.dump(dict(wandb.config), f)
 
 
 def main_log(train_history, valid_history):
@@ -102,8 +99,10 @@ def plot_training_curves(metrics, nb_folds, nb_epochs, with_mean={}):
     return plots
 
 
-def log_metrics(metrics, nb_folds, nb_epochs, with_mean={}):
+def log_metrics(metrics, nb_folds, nb_epochs, with_mean=None):
 
+    if with_mean is None:
+        with_mean = {k: None for k in metrics.keys()}
     for epoch in range(nb_epochs):
         metric_logs = {"epoch": epoch}
         for k, v in metrics.items():
