@@ -7,10 +7,11 @@ is loaded.
 # Imports
 import collections
 import numpy as np
-from scipy.ndimage import rotate, affine_transform
+from scipy.ndimage import rotate, affine_transform, convolve
 from skimage import transform as sk_tf
 import torch
 import torch.nn.functional as F
+
 
 class Scaler(object):
     def __init__(self, scale=1):
@@ -18,6 +19,7 @@ class Scaler(object):
 
     def __call__(self, data):
         return self.scale * data
+
 
 class LabelMapping(object):
 
@@ -35,6 +37,7 @@ class LabelMapping(object):
         else:
             return label
 
+
 class HardNormalization(object):
     def __init__(self, min=-1.0, max=1.0, eps=1e-8):
         self.min = min
@@ -46,7 +49,8 @@ class HardNormalization(object):
         max_arr = np.max(arr)
         if np.abs(min_arr - max_arr) < self.eps:
             return np.zeros_like(arr)
-        return ((self.max-self.min) * arr + (self.min*max_arr - self.max*min_arr))/(max_arr-min_arr)
+        return ((self.max - self.min) * arr + (self.min * max_arr - self.max * min_arr)) / (max_arr - min_arr)
+
 
 class RandomFlip(object):
     def __init__(self, vflip=False, hflip=True, dflip=True, proba=0.5):
@@ -63,6 +67,7 @@ class RandomFlip(object):
         if self.dflip and np.random.rand() < self.prob:
             arr = np.flip(arr, axis=[0])
         return arr.copy()
+
 
 class RandomPatchInversion(object):
     def __init__(self, patch_size=10, data_threshold=0):
@@ -88,25 +93,27 @@ class RandomPatchInversion(object):
             arr[patch2] = data_patch1
             print(patch1, patch2)
         return arr, label
-    
+
     def get_random_patch(self, mask):
         # Warning: we assume the mask is convex
         possible_indices = mask.nonzero(as_tuple=True)
         if len(possible_indices[0]) == 0:
             raise ValueError("Empty mask")
         index = np.random.randint(len(possible_indices[0]))
-        point = [min(ind[index], mask.shape[i]-self.patch_size) for i, ind in enumerate(possible_indices)]
+        point = [min(ind[index], mask.shape[i] - self.patch_size) for i, ind in enumerate(possible_indices)]
         patch = tuple([slice(p, p + self.patch_size) for p in point])
         return patch
-    
+
+
 class Random90_3DRot(object):
     """Applies a rotation in {0, 90, 180, 270} in each direction and returns a label k in [0..23]"""
+
     def __init__(self, authorized_rot=None, axes=None):
         if authorized_rot is not None:
             assert set(authorized_rot) <= {0, 90, 180, 270}
         self.authorized_rot = list(authorized_rot or [0, 90, 180, 270])
         self.nb_rots = len(self.authorized_rot)
-        self.num_classes = self.nb_rots * 3 * 2 # 3 axes, 2 directions or the nb of faces in a cube
+        self.num_classes = self.nb_rots * 3 * 2  # 3 axes, 2 directions or the nb of faces in a cube
         self.rot_to_k = {0: 0, 90: 1, 180: 2, 270: 3}
 
         # The 'front' is the axes (1, 2) here. It is arbitrary.
@@ -140,15 +147,15 @@ class Random90_3DRot(object):
             angle = self.authorized_rot[angle_index]
 
         # From the cube's face, deduce the axis and direction
-        (direction, face_axes) = (cube_face%2, self.authorized_axes[cube_face//2])
+        (direction, face_axes) = (cube_face % 2, self.authorized_axes[cube_face // 2])
 
         # Put the selected face to front or back (front is the axes (0, 1) in 3D, (1, 2) in 4D with the channel)
         if direction == 0:
-            (k, axes) = self.cube_face_to_front[cube_face//2]
+            (k, axes) = self.cube_face_to_front[cube_face // 2]
             arr = np.rot90(arr, k=k, axis=axes)
 
         elif direction == 1:
-            (k, axes) = self.cube_face_to_back[cube_face//2]
+            (k, axes) = self.cube_face_to_back[cube_face // 2]
             arr = np.rot90(arr, k=k, axis=axes)
 
         # Rotate of the chosen angle in the direction selected
@@ -166,14 +173,15 @@ class Random90_3DRot(object):
             list_permutation.append(rotated_m)
         return list_permutation
 
+
 class Normalize(object):
     def __init__(self, mean=0.0, std=1.0, eps=1e-8):
-        self.mean=mean
-        self.std=std
-        self.eps=eps
+        self.mean = mean
+        self.std = std
+        self.eps = eps
 
     def __call__(self, arr):
-        return self.std * (arr - np.mean(arr))/(np.std(arr) + self.eps) + self.mean
+        return self.std * (arr - np.mean(arr)) / (np.std(arr) + self.eps) + self.mean
 
 
 class Standardize(object):
@@ -187,10 +195,12 @@ class Standardize(object):
             self.std[self.std == 0.0] = 1
 
     def __call__(self, arr):
-        return (arr - self.mean)/self.std
+        return (arr - self.mean) / self.std
+
 
 class Crop(object):
     """Crop the given n-dimensional array either at a random location or centered"""
+
     def __init__(self, shape, type="center", resize=False, keep_dim=False):
         """:param
         shape: tuple or list of int
@@ -205,12 +215,12 @@ class Crop(object):
         assert type in ["center", "random"]
         self.shape = shape
         self.copping_type = type
-        self.resize=resize
-        self.keep_dim=keep_dim
+        self.resize = resize
+        self.keep_dim = keep_dim
 
     def __call__(self, arr):
         assert isinstance(arr, np.ndarray)
-        assert type(self.shape) == int or len(self.shape) == len(arr.shape), "Shape of array {} does not match {}".\
+        assert type(self.shape) == int or len(self.shape) == len(arr.shape), "Shape of array {} does not match {}". \
             format(arr.shape, self.shape)
 
         img_shape = np.array(arr.shape)
@@ -240,6 +250,7 @@ class Crop(object):
 
         return arr[tuple(indexes)]
 
+
 class Resize(object):
 
     def __init__(self, output_shape, **kwargs):
@@ -248,6 +259,7 @@ class Resize(object):
 
     def __call__(self, arr):
         return sk_tf.resize(arr, self.output_shape, **self.kwargs)
+
 
 class Rescale(object):
 
@@ -258,12 +270,14 @@ class Rescale(object):
     def __call__(self, arr):
         return sk_tf.rescale(arr, self.scale, **self.kwargs)
 
+
 class GaussianNoise:
     def __init__(self, std=0.1):
         self.std = std
 
     def __call__(self, arr):
         return arr + self.std * torch.randn_like(arr)
+
 
 class RandomAffineTransform3d:
     def __init__(self, angles, translate):
@@ -284,7 +298,7 @@ class RandomAffineTransform3d:
         self.translate = translate
 
     def __call__(self, arr):
-        assert len(arr.shape) == 4 and isinstance(arr, np.ndarray) # == (C, H, W, D)
+        assert len(arr.shape) == 4 and isinstance(arr, np.ndarray)  # == (C, H, W, D)
 
         arr_shape = np.array(arr.shape)
         angles = [np.deg2rad(np.random.random() * (angle_max - angle_min) + angle_min)
@@ -297,18 +311,18 @@ class RandomAffineTransform3d:
         middle_point = (np.asarray(arr_shape[1:]) - 1) / 2
         offset = middle_point - np.dot(middle_point, R)
 
-        translation = [np.round(np.random.random() * (2*arr_shape[i+1]*t) - arr_shape[i+1]*t)
-                       for i,t in enumerate(self.translate)]
+        translation = [np.round(np.random.random() * (2 * arr_shape[i + 1] * t) - arr_shape[i + 1] * t)
+                       for i, t in enumerate(self.translate)]
         out = np.zeros(arr_shape, dtype=arr.dtype)
         for c in range(arr_shape[0]):
-            affine_transform(arr[c], R.T, offset=offset+translation, output=out[c], mode='nearest')
+            affine_transform(arr[c], R.T, offset=offset + translation, output=out[c], mode='nearest')
 
         return out
 
 
 class Rotation(object):
-    # TODO: convert it to handle torch tensors
-    def __init__(self, angle, axes=(1,2), reshape=True, **kwargs):
+    # TODO : convert it to handle torch tensors
+    def __init__(self, angle, axes=(1, 2), reshape=True, **kwargs):
         self.angle = angle
         self.axes = axes
         self.reshape = reshape
@@ -317,10 +331,12 @@ class Rotation(object):
     def __call__(self, arr):
         return rotate(arr, self.angle, axes=self.axes, reshape=self.reshape, **self.rotate_kwargs)
 
+
 class RandomRotation(object):
     # TODO: convert it to handle torch tensors
     """ nd generalisation of https://pytorch.org/docs/stable/torchvision/transforms.html section RandomRotation"""
-    def __init__(self, angles, axes=(0,2), reshape=True, **kwargs):
+
+    def __init__(self, angles, axes=(0, 2), reshape=True, **kwargs):
         if type(angles) in [int, float]:
             self.angles = [-angles, angles]
         elif type(angles) == list and len(angles) == 2 and angles[0] < angles[1]:
@@ -341,6 +357,7 @@ class RandomRotation(object):
 class Padding(object):
     """ A class to pad an image.
     """
+
     def __init__(self, shape, **kwargs):
         """ Initialize the instance.
 
@@ -392,6 +409,7 @@ class Padding(object):
 class Downsample(object):
     """ A class to downsample an array.
     """
+
     def __init__(self, scale, with_channels=True):
         """ Initialize the instance.
 
@@ -441,15 +459,17 @@ class Downsample(object):
 
 class Binarize(object):
 
-    def __init__(self, one_values=None, threshold=None, with_channels=False):
+    def __init__(self, one_values=None, threshold=None, with_channels=True):
         """ Initialize the instance.
             Parameters
             ----------
             one_values: list
                 the value of the input to be set to 1 in the output
+            threshold: float
+                threshold above which the values of the input will be set to 1 in the output
             with_channels: bool, default False
                 if set expect the array to contain the channels in first dimension.
-                if set expect one_values and threshold to be a list of list with dimensions (nb_channels, ..)
+                if set, one_values and threshold can be different for each channels
             """
         self.threshold = threshold
         self.one_values = one_values
@@ -471,7 +491,7 @@ class Binarize(object):
         if self.with_channels:
             data = []
             for ch, _arr in enumerate(arr):
-                data.append(self._apply_binarize(_arr, self.one_values[ch], self.threshold[ch]))
+                data.append(self._apply_binarize(_arr, self.one_values, self.threshold))
             return np.asarray(data)
         else:
             return self._apply_binarize(arr, self.one_values, self.threshold)
@@ -485,13 +505,12 @@ class Binarize(object):
             bin_arr[np.isin(arr, one_values)] = 1
         if threshold is not None:
             bin_arr[arr > threshold] = 1
-
         return bin_arr
 
 
 class GaussianConvolution(object):
 
-    def __init__(self, sigma, size):
+    def __init__(self, sigma, size, with_channels=True):
         """ Initialize the instance.
             Parameters
             ----------
@@ -502,28 +521,27 @@ class GaussianConvolution(object):
         if self.size % 2 == 0:
             self.size += 1
         self.sigma = sigma
+        self.with_channels = with_channels
 
     def make_gaussian_kernel(self):
         """ Create a gaussian kernel with size and sigma
         """
-        ts = torch.linspace(-self.size // 2, self.size // 2 + 1, self.size)
-        gauss = torch.exp((-(ts / self.sigma) ** 2 / 2))
-        kernel = gauss / gauss.sum()
+        half_size = self.size // 2
+        rng = np.arange(-half_size, half_size + 1, 1)
+        x, y, z = np.meshgrid(rng, rng, rng)
+        kernel = np.exp(-(x ** 2 + y ** 2 + z ** 2) / (2 * self.sigma ** 2))
         return kernel
 
     def __call__(self, arr):
         """ Convolution of an array with a gaussian kernel
         """
-        tensor = torch.Tensor(arr)
-        tensor = tensor.reshape(1, *tensor.shape)
-        kernel = self.make_gaussian_kernel()
-        kernel_3d = torch.einsum('i,j,k->ijk', kernel, kernel, kernel)
-        kernel_3d = kernel_3d / kernel_3d.sum()
-        kernel_3d = kernel_3d.reshape(1, 1, *kernel_3d.shape)
-        assert tensor.type() == kernel_3d.type(), f"The type of the kernel ({kernel_3d.type()}) " \
-                                                  f"and the type of the tensor ({tensor.type()})" \
-                                                  f"is not the same"
-        gauss_tensor = F.conv3d(tensor, kernel_3d, stride=1, padding=len(kernel) // 2)
-        gauss_arr = gauss_tensor.squeeze().numpy()
-
+        if self.with_channels:
+            data = []
+            for ch, _arr in enumerate(arr):
+                kernel = self.make_gaussian_kernel()
+                data.append(convolve(_arr, kernel, output=None, mode='constant', cval=0.0, origin=0))
+            gauss_arr = np.asarray(data)
+        else:
+            kernel = self.make_gaussian_kernel(self.size, self.sigma)
+            gauss_arr = convolve(arr, kernel, output=None, mode='constant', cval=0.0, origin=0)
         return gauss_arr
