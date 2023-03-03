@@ -52,7 +52,7 @@ class BaseTrainer:
     def build_scheduler(self, step_size, gamma):
         if len(step_size) == 1:
             return torch.optim.lr_scheduler.StepLR(self.optimizer, gamma=gamma,
-                                                   step_size=step_size)
+                                                   step_size=step_size[0])
         elif len(step_size) > 1:
             num_epochs = list(np.cumsum(step_size))
             if num_epochs[-1] > self.args.nb_epochs:
