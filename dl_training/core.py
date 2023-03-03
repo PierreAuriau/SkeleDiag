@@ -269,7 +269,7 @@ class Base(object):
 
         self.model.train()
         nb_batch = len(loader)
-        pbar = tqdm(total=nb_batch, desc=f"Mini-Batch ({fold},{epoch})s")
+        pbar = tqdm(total=nb_batch, desc=f"Mini-Batch ({fold},{epoch})")
 
         values = {}
         iteration = 0
