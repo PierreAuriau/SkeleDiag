@@ -5,15 +5,11 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 import wandb
-import logging
-
-logger = logging.getLogger("SkeleDiag")
 
 
 def set_environment_variables(args):
     os.makedirs(args.checkpoint_dir, exist_ok=True)
     os.environ["WANDB_DIR"] = args.checkpoint_dir
-    logger.info(f"WandB directory : {os.environ['WANDB_DIR']}")
 
 
 def define_wandb_metrics(metrics):
@@ -55,7 +51,9 @@ def main_log(train_history, valid_history):
     update_summary(metrics, nb_folds)
 
 
-def plot_training_curves(metrics, nb_folds, nb_epochs, with_mean={}):
+def plot_training_curves(metrics, nb_folds, nb_epochs, with_mean=None):
+    if with_mean is None:
+        with_mean = {k: False for k in metrics.keys()}
     # Colors of the curves
     colors = [px.colors.qualitative.Plotly[f] for f in range(nb_folds)]
 
@@ -102,7 +100,7 @@ def plot_training_curves(metrics, nb_folds, nb_epochs, with_mean={}):
 def log_metrics(metrics, nb_folds, nb_epochs, with_mean=None):
 
     if with_mean is None:
-        with_mean = {k: None for k in metrics.keys()}
+        with_mean = {k: False for k in metrics.keys()}
     for epoch in range(nb_epochs):
         metric_logs = {"epoch": epoch}
         for k, v in metrics.items():
