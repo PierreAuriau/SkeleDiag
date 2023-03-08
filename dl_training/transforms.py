@@ -343,15 +343,23 @@ class RandomRotation(object):
             self.angles = angles
         else:
             raise ValueError("Unkown angles type: {}".format(type(angles)))
-        if axes is None:
+        if isinstance(axes, tuple):
+            self.axes = [axes]
+        elif isinstance(axes, list):
+            self.axes = axes
+        elif axes is None:
             print('Warning: rotation plane will be determined randomly')
-        self.axes = axes
+            self.axes = [tuple(np.random.choice(3, 2, replace=False))]
+        else:
+            raise ValueError(f"Unknown axes type : {type(axes)}")
         self.reshape = reshape
         self.rotate_kwargs = kwargs
 
     def __call__(self, arr):
-        angle = np.random.random() * (self.angles[1] - self.angles[0]) + self.angles[0]
-        return rotate(arr, angle, axes=self.axes, reshape=self.reshape, **self.rotate_kwargs)
+        angle = np.random.uniform(self.angles[0], self.angles[1])
+        for axes in self.axes:
+            arr = rotate(arr, angle, axes=axes, reshape=self.reshape, **self.rotate_kwargs)
+        return arr
 
 
 class Padding(object):
@@ -510,38 +518,46 @@ class Binarize(object):
 
 class GaussianConvolution(object):
 
-    def __init__(self, sigma, size, with_channels=True):
+    def __init__(self, sigma, size, random=False, with_channels=True):
         """ Initialize the instance.
             Parameters
             ----------
             size : the size of the Gaussian kernel
             sigma : the standard deviation of the Gaussian probabilty distribution
+                    in random mode, it should be a tuple (sigma_min, sigma_max)
+            random : if True, sigma is pulled from a uniform distribution between sigma_min and sigma_max
         """
         self.size = int(size)
         if self.size % 2 == 0:
             self.size += 1
+        self.random = random
+        if self.random:
+            assert len(sigma) == 2, print("In random mode, sigma should be a tuple (sigma_min, sigma_max)")
         self.sigma = sigma
         self.with_channels = with_channels
 
-    def make_gaussian_kernel(self):
+    def make_gaussian_kernel(self, sigma):
         """ Create a gaussian kernel with size and sigma
         """
         half_size = self.size // 2
         rng = np.arange(-half_size, half_size + 1, 1)
         x, y, z = np.meshgrid(rng, rng, rng)
-        kernel = np.exp(-(x ** 2 + y ** 2 + z ** 2) / (2 * self.sigma ** 2))
+        kernel = np.exp(-(x ** 2 + y ** 2 + z ** 2) / (2 * sigma ** 2))
         return kernel
 
     def __call__(self, arr):
         """ Convolution of an array with a gaussian kernel
         """
+        if self.random:
+            sigma = np.random.uniform(self.sigma[0], self.sigma[1])
+        else:
+            sigma = self.sigma
+        kernel = self.make_gaussian_kernel(sigma=sigma)
         if self.with_channels:
             data = []
             for ch, _arr in enumerate(arr):
-                kernel = self.make_gaussian_kernel()
-                data.append(convolve(_arr, kernel, output=None, mode='constant', cval=0.0, origin=0))
+                data.append(convolve(_arr, kernel, mode='constant', cval=0.0, origin=0))
             gauss_arr = np.asarray(data)
         else:
-            kernel = self.make_gaussian_kernel(self.size, self.sigma)
-            gauss_arr = convolve(arr, kernel, output=None, mode='constant', cval=0.0, origin=0)
+            gauss_arr = convolve(arr, kernel, mode='constant', cval=0.0, origin=0)
         return gauss_arr
