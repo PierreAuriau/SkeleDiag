@@ -5,7 +5,7 @@ import wandb
 import os
 from dl_training.training import BaseTrainer
 from dl_training.testing import OpenBHBTester
-from dl_trainin.utils import save_hyperparameters, setup_logging
+from dl_training.utils import save_hyperparameters, setup_logging
 
 
 if __name__ == "__main__":
@@ -68,12 +68,31 @@ if __name__ == "__main__":
     # Wandb implementation for sweeps
     parser.add_argument("--sweep", action="store_true")
 
+    # Verbosity
+    parser.add_argument("-v", "--verbose", action="store_true", help="Activate verbosity mode")
+
     args = parser.parse_args()
 
     # ---------------------------------------------------------------------------------------------------------------- #
 
     # Create saving directory
     os.makedirs(args.checkpoint_dir, exist_ok=True)
+
+    # Setup Logging
+    setup_logging(level="debug" if args.verbose else "info",
+                  logfile=os.path.join(args.checkpoint_dir, f"{args.exp_name}.log"))
+
+    if args.sweep:
+        # Wandb
+        from wandb_log import set_environment_variables
+        set_environment_variables(args=args)
+        run = wandb.init()
+        args.checkpoint_dir = os.path.join(args.checkpoint_dir, run.name)
+        os.makedirs(args.checkpoint_dir, exist_ok=True)
+        setup_logging(level="debug" if args.verbose else "info",
+                      logfile=os.path.join(args.checkpoint_dir, f"{args.exp_name}.log"))
+
+    logger.info(f"Checkpoint directory : {args.checkpoint_dir}")
 
     if not torch.cuda.is_available():
         args.cuda = False
@@ -86,17 +105,9 @@ if __name__ == "__main__":
         args.train = True
         logger.info("No mode specify: training mode is set automatically")
 
-    if args.sweep:
-        # Wandb
-        from wandb_log import set_environment_variables
-        set_environment_variables(args=args)
-        run = wandb.init(config=args, dir=args.checkpoint_dir)
-        run_name = run.name
-        args.checkpoint_dir = os.path.join(args.checkpoint_dir, run_name)
-        os.makedirs(args.checkpoint_dir, exist_ok=True)
-
     if args.train:
         save_hyperparameters(args)
+        logger.info("Hyperparameters saved")
         trainer = BaseTrainer(args)
         train_history, valid_history = trainer.run()
         if args.sweep:
