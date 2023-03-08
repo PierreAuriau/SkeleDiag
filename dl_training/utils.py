@@ -7,11 +7,40 @@ import torch
 import numpy as np
 import logging
 import warnings
+import json
 
 logger = logging.getLogger("SMLvsDL")
 
+
+class ConsoleFormatter(logging.Formatter):
+
+    def __init__(self):
+        super(ConsoleFormatter, self).__init__()
+        bright_black = "\033[0;90m"
+        bright_white = "\033[0;97m"
+        yellow = "\033[0;33m"
+        red = "\033[0;31m"
+        magenta = "\033[0;35m"
+        white = "\033[0;37m"
+        log_format = "[%(filename)s] %(levelname)s - %(message)s"
+
+        self.log_formats = {
+            logging.DEBUG: bright_black + log_format + bright_white,
+            logging.INFO: white + log_format + bright_white,
+            logging.WARNING: yellow + log_format + bright_white,
+            logging.ERROR: red + log_format + bright_white,
+            logging.CRITICAL: magenta + log_format + bright_white
+        }
+
+    def format(self, record):
+        log_fmt = self.log_formats.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+
 def get_chk_name(name, fold, epoch):
-    return "{name}_{fold}_epoch_{epoch}.pth".format(name=name or "model",fold=fold,epoch=epoch)
+    return "{name}_{fold}_epoch_{epoch}.pth".format(name=name or "model", fold=fold, epoch=epoch)
+
 
 def get_pickle_obj(path):
     import pickle
@@ -19,11 +48,14 @@ def get_pickle_obj(path):
         obj = pickle.load(f)
     return obj
 
+
 def setup_logging(level="info", logfile=None):
     """ Setup the logging.
 
     Parameters
     ----------
+    level : str, default "info"
+        the logger level
     logfile: str, default None
         the log file.
     """
@@ -34,9 +66,7 @@ def setup_logging(level="info", logfile=None):
         "error": logging.ERROR,
         "critical": logging.CRITICAL
     }
-    logging_format = logging.Formatter(
-        "[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - "
-        "%(message)s", "%Y-%m-%d %H:%M:%S")
+
     while len(logging.root.handlers) > 0:
         logging.root.removeHandler(logging.root.handlers[-1])
     while len(logger.handlers) > 0:
@@ -47,15 +77,24 @@ def setup_logging(level="info", logfile=None):
     logger.setLevel(level)
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(level)
-    stream_handler.setFormatter(logging_format)
+    stream_handler.setFormatter(ConsoleFormatter())
     logger.addHandler(stream_handler)
     if logfile is not None:
+        logging_format = logging.Formatter(
+            "[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - "
+            "%(message)s", "%Y-%m-%d %H:%M:%S")
         file_handler = logging.FileHandler(logfile, mode="a")
         file_handler.setLevel(level)
         file_handler.setFormatter(logging_format)
         logger.addHandler(file_handler)
     if level != logging.DEBUG:
         warnings.simplefilter("ignore", DeprecationWarning)
+
+
+def save_hyperparameters(args):
+    with open(os.path.join(args.checkpoint_dir, f"{args.exp_name}_hyperparameters.json"), "w") as f:
+        json.dump(vars(args), f)
+
 
 def checkpoint(model, epoch, fold, outdir, name=None, optimizer=None, scheduler=None, state_dict=False,
                **kwargs):
@@ -104,6 +143,7 @@ def checkpoint(model, epoch, fold, outdir, name=None, optimizer=None, scheduler=
             **kwargs}, outfile)
     return outfile
 
+
 def reset_weights(model, checkpoint=None):
     """ Reset all the weights of a model. If a checkpoint is given, restore
     the checkpoint weights.
@@ -115,9 +155,11 @@ def reset_weights(model, checkpoint=None):
     checkpoint: dict
         the saved model weights
     """
+
     def weight_reset(m):
         if hasattr(m, "reset_parameters"):
             m.reset_parameters()
+
     if checkpoint is None:
         model.apply(weight_reset)
     else:
@@ -128,6 +170,7 @@ def reset_weights(model, checkpoint=None):
         else:
             model.load_state_dict(checkpoint)
 
+
 def tensor2im(tensor):
     """
     It returns a numpy array from an input tensor which can share the memory with the input
@@ -137,6 +180,6 @@ def tensor2im(tensor):
             return tensor.detach().cpu().numpy()
     return tensor
 
+
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
