@@ -6,12 +6,14 @@ is loaded.
 
 # Imports
 import collections
+import logging
 import numpy as np
 from scipy.ndimage import rotate, affine_transform, convolve
 from skimage import transform as sk_tf
 import torch
 import torch.nn.functional as F
 
+logger = logging.getLogger("")
 
 class Scaler(object):
     def __init__(self, scale=1):
@@ -336,7 +338,7 @@ class RandomRotation(object):
     # TODO: convert it to handle torch tensors
     """ nd generalisation of https://pytorch.org/docs/stable/torchvision/transforms.html section RandomRotation"""
 
-    def __init__(self, angles, axes=(0, 2), reshape=True, **kwargs):
+    def __init__(self, angles, axes=(0, 2), reshape=True, probabilty=None, with_channels=True, **kwargs):
         if type(angles) in [int, float]:
             self.angles = [-angles, angles]
         elif type(angles) == list and len(angles) == 2 and angles[0] < angles[1]:
@@ -353,9 +355,22 @@ class RandomRotation(object):
         else:
             raise ValueError(f"Unknown axes type : {type(axes)}")
         self.reshape = reshape
+        self.probability = probabilty
+        self.with_channels = with_channels
         self.rotate_kwargs = kwargs
 
     def __call__(self, arr):
+        if self.probability is not None and np.random.random() > self.probability:
+            return arr
+        if self.with_channels:
+            data = []
+            for _arr in arr:
+                data.append(self._apply_random_rotation(_arr))
+            return np.asarray(data)
+        else:
+            return self._apply_random_rotation(arr)
+
+    def _apply_random_rotation(self, arr):
         angle = np.random.uniform(self.angles[0], self.angles[1])
         for axes in self.axes:
             arr = rotate(arr, angle, axes=axes, reshape=self.reshape, **self.rotate_kwargs)
@@ -543,7 +558,7 @@ class GaussianConvolution(object):
         rng = np.arange(-half_size, half_size + 1, 1)
         x, y, z = np.meshgrid(rng, rng, rng)
         kernel = np.exp(-(x ** 2 + y ** 2 + z ** 2) / (2 * sigma ** 2))
-        return kernel
+        return kernel.astype(np.float32)
 
     def __call__(self, arr):
         """ Convolution of an array with a gaussian kernel
