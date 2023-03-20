@@ -25,7 +25,7 @@ class BaseTrainer:
         self.scheduler = self.build_scheduler(args.step_size_scheduler, args.gamma_scheduler)
 
         model_cls = SimCLR if args.pb == "self_supervised" else Base
-        self.kwargs_train = dict()
+        self.kwargs_train = dict(gradscaler=True)
 
         self.model = model_cls(model=self.net,
                                metrics=self.metrics,
@@ -93,7 +93,7 @@ class BaseTrainer:
             # Default value for sigma == 5
             loss = WeaklySupervisedNTXenLoss(temperature=0.1, kernel="rbf", sigma=args.sigma, return_logits=True)
         else:
-            raise ValueError("Unknown problem: %s"%args.pb)
+            raise ValueError("Unknown problem: %s" % args.pb)
         return loss
 
     @staticmethod
@@ -144,13 +144,13 @@ class BaseTrainer:
                 mask = None
         except FileNotFoundError:
             raise FileNotFoundError("Brain masks not found. You can find them in /masks directory "
-                                    "and mv them to this directory: %s"%args.root)
+                                    "and mv them to this directory: %s" % args.root)
 
         mask = (mask.get_data() != 0) if mask is not None else None
         # Depreciation warning : mask = (mask.get_fdata() != 0)
         _manager_cls = None
-        if args.pb in ["age", "sex"]:
-            if args.N_train_max <= 5000:
+        if args.pb in ["age", "sex", "site"]:
+            if args.N_train_max is not None and args.N_train_max <= 5000:
                 _manager_cls = OpenBHBDataManager
             else:
                 args.N_train_max = None
@@ -169,7 +169,9 @@ class BaseTrainer:
             kwargs_manager["model"] = "SimCLR" if args.pb == "self_supervised" else "base"
         elif args.pb in ["scz", "bipolar", "asd"]:
             kwargs_manager["db"] = args.pb
-
+        if args.input_transforms is not None:
+            kwargs_manager["input_transforms"] = args.input_transforms
+        logger.debug(f"Kwargs Manager : {kwargs_manager}")
         manager = _manager_cls(args.root, preproc, **kwargs_manager)
 
         return manager
