@@ -21,6 +21,7 @@ import torch
 import torch.nn.functional as func
 from torch.nn import DataParallel
 from torch.utils.data import DataLoader
+from torch.cuda.amp import GradScaler, autocast
 from tqdm import tqdm
 import numpy as np
 # Package import
@@ -70,6 +71,7 @@ class Base(object):
         self.logger = logging.getLogger("SMLvsDL")
         self.loss = kwargs.get("loss")
         self.device = torch.device("cuda" if use_cuda else "cpu")
+        self.scaler = kwargs.get("gradscaler")
         for name in ("optimizer", "loss"):
             if name in kwargs:
                 kwargs.pop(name)
@@ -102,11 +104,13 @@ class Base(object):
             checkpoint = None
             try:
                 checkpoint = torch.load(pretrained, map_location=lambda storage, loc: storage)
+                self.logger.debug(f"Checkpoint Load : {pretrained}")
             except BaseException as e:
                 self.logger.error('Impossible to load the checkpoint: %s' % str(e))
             if checkpoint is not None:
                 if hasattr(checkpoint, "state_dict"):
                     self.model.load_state_dict(checkpoint.state_dict())
+                    self.logger.debug(f"State Dict Loaded")
                 elif isinstance(checkpoint, dict):
                     if "model" in checkpoint:
                         try:
@@ -266,7 +270,9 @@ class Base(object):
         values: dict
             the values of the metrics.
         """
-
+        scaler = kwargs.get("gradscaler")
+        if scaler is not None:
+            scaler = GradScaler()
         self.model.train()
         nb_batch = len(loader)
         pbar = tqdm(total=nb_batch, desc=f"Mini-Batch ({fold},{epoch})")
@@ -291,10 +297,19 @@ class Base(object):
             list_targets.append(_targets)
 
             self.optimizer.zero_grad()
-            outputs = self.model(inputs)
-            batch_loss = self.loss(outputs, *list_targets)
-            batch_loss.backward()
-            self.optimizer.step()
+
+            if scaler is not None:
+                with autocast():
+                    outputs = self.model(inputs)
+                    batch_loss = self.loss(outputs, *list_targets)
+                scaler.scale(batch_loss).backward()
+                scaler.step(self.optimizer)
+                scaler.update()
+            else:
+                outputs = self.model(inputs)
+                batch_loss = self.loss(outputs, *list_targets)
+                batch_loss.backward()
+                self.optimizer.step()
 
             losses.append(float(batch_loss))
             y_pred.extend(outputs.detach().cpu().numpy())
